@@ -2,6 +2,8 @@
 
 Find a claimed quote inside source text.
 
+[Built by Pixelbrew Studio](https://pixelbrew.studio/work/quote-locator) as part of its public workbench for evidence-backed AI interfaces.
+
 `quote-locator` tries the boring path first: exact match. If that fails, it tries normalized matching for casing, whitespace, and punctuation differences. If that still fails, it uses a small fuzzy window search and returns the best source span above a configurable score.
 
 Useful for evidence-backed AI interfaces, research notes, document review tools, and anywhere a system should show where a claim came from.
@@ -72,3 +74,8 @@ type QuoteLocation = {
 
 This package does not prove that a quote supports a claim. It only locates text spans. Judgment still belongs in your application.
 
+## Related Work
+
+- [Pixelbrew Studio](https://pixelbrew.studio) - independent AI-native product lab for small tools and public experiments.
+- [pb-suite](https://github.com/pixelbrew-studio/pb-suite) - local command suite for AI-assisted product engineering, reviews, QA, and release discipline.
+- [eval-metrics-ts](https://github.com/pixelbrew-studio/eval-metrics-ts) - dependency-light metrics for classification and ranking evaluations.
