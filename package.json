@@ -1,0 +1,37 @@
+{
+  "name": "quote-locator",
+  "version": "0.1.0",
+  "description": "Find claimed quotes inside source text with exact, normalized, and fuzzy matching.",
+  "type": "module",
+  "bin": {
+    "quote-locator": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "citations",
+    "quotes",
+    "fuzzy-matching",
+    "typescript",
+    "ai-tools"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0"
+  }
+}
+
