@@ -3,6 +3,17 @@
   "version": "0.1.0",
   "description": "Find claimed quotes inside source text with exact, normalized, and fuzzy matching.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixelbrew-studio/quote-locator.git"
+  },
+  "homepage": "https://github.com/pixelbrew-studio/quote-locator#readme",
+  "bugs": {
+    "url": "https://github.com/pixelbrew-studio/quote-locator/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
     "quote-locator": "dist/cli.js"
   },
@@ -32,18 +43,7 @@
     "ai-tools"
   ],
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/pixelbrew-studio/quote-locator.git"
-  },
-  "bugs": {
-    "url": "https://github.com/pixelbrew-studio/quote-locator/issues"
-  },
-  "homepage": "https://github.com/pixelbrew-studio/quote-locator#readme",
   "author": "Pixelbrew Studio (https://pixelbrew.studio)",
-  "engines": {
-    "node": ">=18"
-  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.8.0"
