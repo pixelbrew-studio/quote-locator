@@ -271,8 +271,14 @@ function mappedMatch(
 ): QuoteLocation {
   const start = mappedText.map[mappedStart] ?? 0;
   const lastMapIndex = Math.min(mappedStart + mappedLength - 1, mappedText.map.length - 1);
-  const end = (mappedText.map[lastMapIndex] ?? start) + 1;
+  const lastSourceOffset = mappedText.map[lastMapIndex] ?? start;
+  const end = lastSourceOffset + codeUnitWidthAt(sourceText, lastSourceOffset);
   return makeMatch(sourceText, start, end, score, method);
+}
+
+function codeUnitWidthAt(text: string, offset: number): number {
+  const codePoint = text.codePointAt(offset);
+  return codePoint !== undefined && codePoint > 0xffff ? 2 : 1;
 }
 
 function normalizeWithMap(input: string): NormalizedText {
@@ -280,8 +286,8 @@ function normalizeWithMap(input: string): NormalizedText {
   const map: number[] = [];
   let pendingSpace: number | null = null;
 
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input[index]!;
+  let index = 0;
+  for (const char of input) {
     const normalized = char.toLowerCase();
 
     if (/[\p{L}\p{N}]/u.test(normalized)) {
@@ -294,12 +300,14 @@ function normalizeWithMap(input: string): NormalizedText {
       for (let unit = 0; unit < normalized.length; unit += 1) {
         map.push(index);
       }
+      index += char.length;
       continue;
     }
 
     if (text.length > 0) {
       pendingSpace = pendingSpace ?? index;
     }
+    index += char.length;
   }
 
   return { text: text.trim(), map };

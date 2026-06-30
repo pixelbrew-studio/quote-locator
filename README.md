@@ -31,7 +31,8 @@ console.log(result);
 //   start: 4,
 //   end: 33,
 //   matchedText: "committee approved the budget",
-//   method: "exact"
+//   method: "exact",
+//   position: { startLine: 1, startColumn: 5, endLine: 1, endColumn: 34 }
 // }
 ```
 
@@ -42,6 +43,20 @@ quote-locator source.txt quote.txt
 ```
 
 The CLI prints JSON and exits with code `0` when a quote is found, `1` when no acceptable match is found, and `2` for usage or file errors.
+
+Flags:
+
+| Flag | Meaning |
+|---|---|
+| `--all` | Print every match (`locateAllQuotes`) as a JSON array; exit `0` if non-empty, `1` if empty. |
+| `--min-score <n>` | Minimum fuzzy score (default `0.72`); an invalid number exits `2`. |
+| `--case-sensitive` | Keep case during exact matching. |
+
+Pass `-` as the source path to read source text from stdin:
+
+```bash
+cat source.txt | quote-locator - quote.txt --all --min-score 0.8
+```
 
 ## API
 
