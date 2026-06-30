@@ -37,7 +37,9 @@ export function locateQuote(
   const exactQuote = caseSensitive ? quote : quote.toLowerCase();
   const exactIndex = exactSource.indexOf(exactQuote);
 
-  if (exactIndex >= 0) {
+  const exactOffsetsAreSafe =
+    exactSource.length === sourceText.length && exactQuote.length === quote.length;
+  if (exactOffsetsAreSafe && exactIndex >= 0) {
     return makeMatch(sourceText, exactIndex, exactIndex + quote.length, 1, "exact");
   }
 
@@ -122,7 +124,9 @@ function normalizeWithMap(input: string): NormalizedText {
       }
       pendingSpace = null;
       text += normalized;
-      map.push(index);
+      for (let offset = 0; offset < normalized.length; offset += 1) {
+        map.push(index);
+      }
       continue;
     }
 
