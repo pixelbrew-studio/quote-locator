@@ -56,6 +56,7 @@ Options:
 | `minScore` | `0.72` | Minimum fuzzy score accepted as a match. |
 | `caseSensitive` | `false` | Keep case during exact matching. |
 | `maxWindowExpansion` | `0.35` | Fuzzy windows may be this much shorter/longer than the quote. |
+| `maxFuzzySourceLength` | `100000` | Skip fuzzy matching when the normalized source is longer than this many characters. |
 
 Return shape:
 
@@ -67,8 +68,28 @@ type QuoteLocation = {
   end: number | null;
   matchedText: string | null;
   method: "exact" | "normalized" | "fuzzy" | "none";
+  position: {
+    startLine: number;
+    startColumn: number;
+    endLine: number;
+    endColumn: number;
+  } | null;
 };
 ```
+
+`position` reports 1-based line and column for the match (`null` when not found). `start`/`end` are character offsets into `sourceText` and are unchanged. Like `end`, `endColumn` is exclusive: it points just after the last matched character. Newlines are counted by `\n`; in a `\r\n` sequence only the `\n` advances the line, so the `\r` stays on the previous line.
+
+### `locateAllQuotes`
+
+```ts
+locateAllQuotes(sourceText, quote, options?): QuoteLocation[]
+```
+
+Returns every span at or above `minScore` instead of just the best one. Useful for highlight-all and multi-citation flows where a quote can appear more than once.
+
+Accepts the same options as `locateQuote`, plus an optional `limit` (maximum number of results; default unlimited).
+
+Results are ordered by `score` descending, then `start` ascending, and never overlap in source character range. When two candidate spans overlap, the higher-scoring one is kept. Empty source, blank quote, or no match returns `[]`.
 
 ## Notes
 

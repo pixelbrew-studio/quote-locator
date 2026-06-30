@@ -4,7 +4,7 @@
   "description": "Find claimed quotes inside source text with exact, normalized, and fuzzy matching.",
   "type": "module",
   "bin": {
-    "quote-locator": "./dist/cli.js"
+    "quote-locator": "dist/cli.js"
   },
   "exports": {
     ".": {
@@ -20,7 +20,9 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "postbuild": "node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "citations",
@@ -30,6 +32,18 @@
     "ai-tools"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixelbrew-studio/quote-locator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pixelbrew-studio/quote-locator/issues"
+  },
+  "homepage": "https://github.com/pixelbrew-studio/quote-locator#readme",
+  "author": "Pixelbrew Studio (https://pixelbrew.studio)",
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.8.0"
