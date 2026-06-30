@@ -8,12 +8,14 @@
     "url": "git+https://github.com/pixelbrew-studio/quote-locator.git"
   },
   "homepage": "https://github.com/pixelbrew-studio/quote-locator#readme",
-  "bugs": "https://github.com/pixelbrew-studio/quote-locator/issues",
+  "bugs": {
+    "url": "https://github.com/pixelbrew-studio/quote-locator/issues"
+  },
   "engines": {
     "node": ">=18"
   },
   "bin": {
-    "quote-locator": "./dist/cli.js"
+    "quote-locator": "dist/cli.js"
   },
   "exports": {
     ".": {
@@ -29,6 +31,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "postbuild": "node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
     "test": "npm run build && node --test test/*.test.mjs",
     "prepublishOnly": "npm run build"
   },
@@ -40,6 +43,7 @@
     "ai-tools"
   ],
   "license": "MIT",
+  "author": "Pixelbrew Studio (https://pixelbrew.studio)",
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.8.0"
