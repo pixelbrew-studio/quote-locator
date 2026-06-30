@@ -381,3 +381,206 @@ test("locateAllQuotes returns [] for no match, empty source, and blank quote", (
   assert.deepEqual(locateAllQuotes("", "anything"), []);
   assert.deepEqual(locateAllQuotes("some text", "   "), []);
 });
+
+// S2: astral-plane alphanumerics (e.g. U+1D400 MATHEMATICAL BOLD CAPITAL A)
+// must survive normalization. Splitting the run with punctuation forces the
+// normalized path; if the astral chars are dropped, no match is found.
+test("S2: astral alphanumerics survive normalization and yield a valid span", () => {
+  const source = "x: \u{1D400}, \u{1D401}\u{1D402} :y"; // "x: 𝐀, 𝐁𝐂 :y"
+  const quote = "\u{1D400} \u{1D401}\u{1D402}"; // "𝐀 𝐁𝐂"
+
+  const result = locateQuote(source, quote);
+
+  assert.equal(result.found, true);
+  assert.equal(result.method, "normalized");
+  assert.equal(result.matchedText, "\u{1D400}, \u{1D401}\u{1D402}");
+  assert.equal(source.slice(result.start, result.end), result.matchedText);
+});
+
+// S1 characterization: pruning allFuzzyWindows to one best window per start
+// must NOT change the returned output. These lock the exact current results
+// on repetitive sources so the internal candidate bound stays output-neutral.
+test("S1: locateAllQuotes output unchanged on a single repetitive fuzzy source", () => {
+  const source = "The board approved a narrow pilot after the review.";
+  const results = locateAllQuotes(source, "board approved the narrow pilot", { minScore: 0.6 });
+
+  assert.deepEqual(results, [
+    {
+      found: true,
+      score: 0.839,
+      start: 3,
+      end: 32,
+      matchedText: " board approved a narrow pilo",
+      method: "fuzzy",
+      position: { startLine: 1, startColumn: 4, endLine: 1, endColumn: 33 },
+    },
+  ]);
+});
+
+test("S1: locateAllQuotes output unchanged mixing exact and a fuzzy repeat", () => {
+  const source = "board approved the narrow pilot. Later the baord aproved a narow pilot.";
+  const results = locateAllQuotes(source, "board approved the narrow pilot", { minScore: 0.7 });
+
+  assert.deepEqual(
+    results.map((r) => ({
+      score: r.score,
+      start: r.start,
+      end: r.end,
+      method: r.method,
+      matchedText: r.matchedText,
+    })),
+    [
+      { score: 1, start: 0, end: 31, method: "exact", matchedText: "board approved the narrow pilot" },
+      { score: 0.774, start: 43, end: 70, method: "fuzzy", matchedText: "baord aproved a narow pilot" },
+    ],
+  );
+});
+
+// Regression: a shorter fuzzy window that does NOT overlap a later, higher-scoring
+// match must be kept. Pruning to one best-scoring window per start would drop it,
+// because the longer best-at-start window overlaps the exact match and gets deduped.
+test("locateAllQuotes keeps a non-overlapping shorter fuzzy window beside a later exact match", () => {
+  const results = locateAllQuotes("aaaaaaaaXaaaaaaaaaa", "aaaaaaaaaa", { minScore: 0.6 });
+  const shapes = results.map((r) => ({ method: r.method, start: r.start, end: r.end }));
+  assert.ok(
+    shapes.some((s) => s.method === "exact" && s.start === 9 && s.end === 19),
+    "expected the exact match at 9..19",
+  );
+  assert.ok(
+    shapes.some((s) => s.method === "fuzzy" && s.start === 0),
+    "expected a non-overlapping fuzzy match starting at 0",
+  );
+});
+
+// S3: CLI --all flag prints a JSON array via locateAllQuotes; exit 0 if non-empty.
+test("S3 CLI --all prints a JSON array and exits 0 when non-empty", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quote-locator-"));
+  const source = join(dir, "source.txt");
+  const quote = join(dir, "quote.txt");
+  writeFileSync(source, "careful sentence and then a careful sentence again", "utf8");
+  writeFileSync(quote, "careful sentence", "utf8");
+
+  const result = spawnSync("node", ["dist/cli.js", "--all", source, quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.ok(Array.isArray(parsed));
+  assert.equal(parsed.length, 2);
+  assert.ok(parsed.every((r) => r.found === true));
+});
+
+test("S3 CLI --all exits 1 with an empty array when nothing matches", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quote-locator-"));
+  const source = join(dir, "source.txt");
+  const quote = join(dir, "quote.txt");
+  writeFileSync(source, "Nothing relevant appears here.", "utf8");
+  writeFileSync(quote, "committee approved budget", "utf8");
+
+  const result = spawnSync("node", ["dist/cli.js", "--all", source, quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), []);
+});
+
+test("S3 CLI --min-score is parsed as a float and passed through", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quote-locator-"));
+  const source = join(dir, "source.txt");
+  const quote = join(dir, "quote.txt");
+  writeFileSync(source, "The board approved a narrow pilot after the review.", "utf8");
+  writeFileSync(quote, "board approved the narrow pilot", "utf8");
+
+  // A strict threshold rejects the only (fuzzy) candidate -> not found -> exit 1.
+  const strict = spawnSync("node", ["dist/cli.js", "--min-score", "0.95", source, quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+  });
+  assert.equal(strict.status, 1);
+  assert.equal(JSON.parse(strict.stdout).found, false);
+
+  // A lenient threshold accepts the fuzzy match -> found -> exit 0.
+  const lenient = spawnSync("node", ["dist/cli.js", "--min-score", "0.6", source, quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+  });
+  assert.equal(lenient.status, 0);
+  assert.equal(JSON.parse(lenient.stdout).method, "fuzzy");
+});
+
+test("S3 CLI exits 2 with a usage/error message on an invalid --min-score", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quote-locator-"));
+  const source = join(dir, "source.txt");
+  const quote = join(dir, "quote.txt");
+  writeFileSync(source, "A small useful tool.", "utf8");
+  writeFileSync(quote, "useful tool", "utf8");
+
+  const result = spawnSync("node", ["dist/cli.js", "--min-score", "abc", source, quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 2);
+  assert.ok(result.stderr.length > 0);
+});
+
+test("S3 CLI rejects a --min-score with trailing junk (numeric prefix)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quote-locator-"));
+  const source = join(dir, "source.txt");
+  const quote = join(dir, "quote.txt");
+  writeFileSync(source, "A small useful tool.", "utf8");
+  writeFileSync(quote, "useful tool", "utf8");
+
+  // parseFloat("0.8xyz") === 0.8 would wrongly accept this; Number("0.8xyz") is NaN.
+  const result = spawnSync("node", ["dist/cli.js", "--min-score", "0.8xyz", source, quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Invalid --min-score/);
+});
+
+test("S3 CLI --case-sensitive is passed through as caseSensitive: true", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quote-locator-"));
+  const source = join(dir, "source.txt");
+  const quote = join(dir, "quote.txt");
+  writeFileSync(source, "The Budget passed.", "utf8");
+  writeFileSync(quote, "budget", "utf8");
+
+  // Without the flag the exact match is case-insensitive.
+  const insensitive = spawnSync("node", ["dist/cli.js", source, quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+  });
+  assert.equal(insensitive.status, 0);
+  assert.equal(JSON.parse(insensitive.stdout).method, "exact");
+
+  // With the flag the exact path is suppressed, falling through to normalized.
+  const sensitive = spawnSync("node", ["dist/cli.js", "--case-sensitive", source, quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+  });
+  assert.equal(sensitive.status, 0);
+  assert.equal(JSON.parse(sensitive.stdout).method, "normalized");
+});
+
+test("S3 CLI reads the source from STDIN when the source arg is '-'", () => {
+  const dir = mkdtempSync(join(tmpdir(), "quote-locator-"));
+  const quote = join(dir, "quote.txt");
+  writeFileSync(quote, "useful tool", "utf8");
+
+  const result = spawnSync("node", ["dist/cli.js", "-", quote], {
+    cwd: new URL("..", import.meta.url).pathname,
+    encoding: "utf8",
+    input: "A small useful tool.",
+  });
+
+  assert.equal(result.status, 0);
+  assert.equal(JSON.parse(result.stdout).found, true);
+  assert.equal(JSON.parse(result.stdout).matchedText, "useful tool");
+});
